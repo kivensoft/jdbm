@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 工程名 -->
+<project name="jdbm" default="build" basedir=".">
+	<!-- 版本号，生成的jar文件名中带版本号 -->
+	<property name="version" value="1.0" />
+	<!-- 程序发布路径 -->
+	<property name="output" value="z:/${ant.project.name}" />
+	<!-- 主函数main的入口类，生成jar必备 -->
+	<property name="MainClass" value="com.kivensoft.Main"/>
+	<!-- 非src目录下的其它源文件，打包进jar文件 -->
+	<property name="src.files" value="readme.txt,build.xml,start.bat,
+    ${ant.project.name}.exe, ${ant.project.name}.ini,
+    ${ant.project.name}.properties"/>
+	<!-- bin目录下打包需要排除的文件 -->
+	<property name="bin.files" value="setting.properties"/>	
+	<!-- 复制到发布目录下的非lib下的文件 -->
+	<property name="dist.files" value="readme.txt,${ant.project.name}.properties"/>
+	<!-- 以上是经常需要变更的配置 -->
+
+  <!-- 编译时自动增加版本号的设置 -->
+	<!-- 路径变量设置 -->
+	<property name="jarfile" value="${output}/${ant.project.name}-${version}.jar" />
+	<property name="src" value="src" />
+	<property name="lib" value="lib" />
+	<property name="bin" value="bin" />
+	<property name="author" value="Kiven Lee"/>
+
+	<!-- 引用的jar包设置 -->
+	<path id="${project.name}.classpath">
+		<fileset dir="${lib}" includes="**/*.jar" />
+	</path>
+
+	<!-- 获取当前时间 -->
+	<tstamp>
+		<format property="build.time" pattern="yyyy-MM-dd HH:mm"/>
+	</tstamp>
+
+	<!-- 创建编译文件输出路径及部署文件路径 -->
+	<target name="init">
+		<mkdir dir="${bin}" />
+		<mkdir dir="${output}" />
+	</target>
+
+	<!-- 编译java源文件，把不需要编译的非java文件复制到编译目录下 -->
+	<target name="compiler" depends="init">
+		<javac srcdir="${src}" destdir="${bin}" includeantruntime="on"
+			debug="off" encoding="UTF-8">
+			<classpath refid="${project.name}.classpath" />
+		</javac>
+		<copy todir="${bin}" preservelastmodified="true">
+			<fileset dir="${src}" excludes="**/*.java" />
+		</copy>
+	</target>
+
+	<!-- 打包编译好的class文件进jar包，源文件打包到src目录下 -->
+	<target name="zip" depends="compiler">
+		<delete dir="${output}" includes="${ant.project.name}-*.jar" />
+		<pathconvert property="mf.classpath" pathsep=" ">
+			<path refid="${project.name}.classpath" />
+			<mapper>
+				<chainedmapper>
+					<flattenmapper />
+					<globmapper from="*" to="${lib}/*" />
+				</chainedmapper>
+			</mapper>
+		</pathconvert>
+		<jar destfile="${jarfile}" filesetmanifest="mergewithoutmain">
+			<!-- 修改缺省主类 -->
+			<manifest>
+			<!--
+				<attribute name="Main-Class" value="${MainClass}" />
+				<attribute name="Class-Path" value="${mf.classpath}" />
+			-->
+				<attribute name="Implementation-Title" value="${ant.project.name}" />
+				<attribute name="Implementation-Version" value="${version}" />
+				<attribute name="Implementation-Maker" value="${author}" />
+				<attribute name="Implementation-Time" value="${build.time}" />
+			</manifest>
+			<!-- 编译后的目录下的所有文件 -->
+			<fileset dir="${basedir}/${bin}" excludes="${bin.files}"/>
+			<!-- 其它需要包含的文件 -->
+			<!--
+			<fileset dir="${basedir}" includes="${src.files}"/>
+			-->
+			<!-- 源文件 -->
+			<!--
+			<fileset dir="${basedir}" includes="${src}/**" />
+			-->
+		</jar>
+	</target>
+
+	<target name="dist" depends="zip">
+		<!-- 复制lib和其它需要发布的文件到发布目录 -->
+		<!--
+		<copy todir="${output}/${lib}" preservelastmodified="true">
+			<fileset dir="${lib}" />
+		</copy>
+		-->
+		<copy todir="${output}" preservelastmodified="true">
+			<fileset dir="${basedir}" includes="${dist.files}"/>
+		</copy>
+		<copy todir="${output}" preservelastmodified="true" file="${ant.project.name}.exe" failonerror="false"/>
+		<copy todir="${output}" preservelastmodified="true" failonerror="false">
+      <fileset dir="${basedir}" includes="${ant.project.name}.ini,start.bat"/>
+			<filterset>
+				<filter token="JAR_NAME" value="${ant.project.name}-${version}.jar"/>
+			</filterset>
+		</copy>
+	</target>
+
+	<target name="build" depends="dist">
+    <echo>application distribution [${output}] successful</echo>
+	</target>
+</project>
+
+<!-- 
+@echo off
+if "%JAVA_HOME%"=="" set JAVA_HOME=%JRE_HOME%
+for %%i in ("%~dp0@PROJECT_NAME@-*.jar") do set APP_NAME=%%i
+start "" "%JAVA_HOME%\bin\javaw.exe" -jar "%APP_NAME%"
+-->
+
